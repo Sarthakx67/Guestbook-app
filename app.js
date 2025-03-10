@@ -1,62 +1,82 @@
-require('dotenv').config();
+// app.js
 const express = require('express');
-const { Pool } = require('pg');
-const bodyParser = require('body-parser');
+const path = require('path');
+const { connectDB, query } = require('./db'); // Import
+const { body, validationResult } = require('express-validator');
 
 const app = express();
-const port = 3000; // Or any port you prefer
+const port = process.env.PORT || 3001;
 
-// --- DATABASE CONFIGURATION (IMPORTANT!) ---
-// Use environment variables for sensitive information!
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',      // Use environment variable, fallback to 'postgres'
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_DATABASE || 'guestbook',
-  password: process.env.DB_PASSWORD || '510500', // REPLACE with your actual password!  And use an env var in production!
-  port: process.env.DB_PORT || 5432,
+// --- Database Connection ---
+connectDB();
+
+// --- Middleware ---
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// --- View Engine Setup (EJS) ---
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+// --- Input Validation Rules ---
+const validateGuestbookEntry = [
+  body('name')
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('Name is required.')
+    .escape(),
+  body('message')
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('Message is required.')
+    .escape(),
+];
+
+
+// --- Routes ---
+
+// GET / - Display the guestbook entries
+app.get('/', async (req, res) => {
+    try {
+        // *** REPLACE THIS WITH DATABASE QUERY ***
+        const result = await query('SELECT * FROM guestbook_entries ORDER BY timestamp DESC');
+        const entries = result.rows;
+         res.render('index', { entries, errors: [] }); // Pass entries and an empty error array initially
+
+    } catch (error) {
+        console.error('Error fetching entries:', error);
+        res.status(500).send('Error fetching entries');
+    }
 });
 
-// --- MIDDLEWARE ---
-app.use(bodyParser.urlencoded({ extended: true })); // Parse URL-encoded bodies (form data)
-app.use(express.json()); // IMPORTANT: Also parse JSON bodies (for future API flexibility)
-app.use(express.static('public')); // Serve static files (like index.html) from the 'public' folder
+// POST /add - Add a new guestbook entry
+app.post('/add', validateGuestbookEntry, async (req, res) => {
+    try {
+         const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+        // Validation failed, re-render the form with errors
+        const result = await query('SELECT * FROM guestbook_entries ORDER BY timestamp DESC');
+        const entries = result.rows;
+        return res.render('index', { entries, errors: errors.array() }); // Pass errors to the template
+        }
+        const { name, message } = req.body;
 
-// --- API ENDPOINTS ---
+        // *** REPLACE THIS WITH DATABASE INSERT ***
+        await query(
+          'INSERT INTO guestbook_entries (name, message) VALUES ($1, $2)',
+          [name, message]
+        );
 
-// GET all guestbook entries
-app.get('/api/entries', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM entries ORDER BY created_at DESC');
-    res.json(result.rows); // Send the entries as JSON
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Internal Server Error: ' + err.message); // More informative error message
-  }
+        res.redirect('/');
+    } catch (error) {
+        console.error('Error adding entry:', error);
+        res.status(500).send('Error adding entry');
+    }
 });
 
-// POST a new guestbook entry
-app.post('/api/entries', async (req, res) => {
-  const { name, message } = req.body;
+// --- Start the Server ---
 
-  // Basic validation (always validate user input!)
-  if (!name || !message) {
-    return res.status(400).send('Name and message are required.');
-  }
-
-  try {
-    const result = await pool.query(
-      'INSERT INTO entries (name, message) VALUES ($1, $2) RETURNING *', //RETURNING * will return the new inserted row.
-      [name, message]
-    );
-    // Send back the newly created entry
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Internal Server Error: ' + err.message); // More informative error
-  }
-});
-
-// --- START THE SERVER ---
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });

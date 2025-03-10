@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guestbook</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Guestbook!</h1>
+
+        <% if (errors && errors.length > 0) { %>
+            <div class="error-message">
+                <ul>
+                    <% errors.forEach(error => { %>
+                        <li><%= error.msg %></li>
+                    <% }); %>
+                </ul>
+            </div>
+        <% } %>
+
+        <section>
+            <h2>Add a New Entry</h2>
+            <form action="/add" method="post">
+                <div>
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required value="<%= locals.name ? name : '' %>">
+                </div>
+                <div>
+                    <label for="message">Message:</label>
+                    <textarea id="message" name="message" required><%= locals.message ? message : '' %></textarea>
+                </div>
+                <button type="submit">Submit</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Guestbook Entries</h2>
+            <% if (entries && entries.length > 0) { %>
+                <ul>
+                    <% entries.forEach(entry => { %>
+                        <li>
+                            <strong><%= entry.name %></strong>:
+                            <%= entry.message %>
+                            <em>(<%= new Date(entry.timestamp).toLocaleString() %>)</em>
+                        </li>
+                    <% }); %>
+                </ul>
+            <% } else { %>
+                <p>No entries yet. Be the first to leave a message!</p>
+            <% } %>
+        </section>
+    </div>
+</body>
+</html>
