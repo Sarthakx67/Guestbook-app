@@ -1,11 +1,22 @@
 // app.js
 const express = require('express');
 const path = require('path');
-const { connectDB, query } = require('./db'); // Import
+const { connectDB, query } = require('./db');
 const { body, validationResult } = require('express-validator');
 
+// --- Global Error Handlers (Crucial for Uncaught Exceptions) ---
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1); // Exit with an error code
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1); // Exit with an error code
+});
+
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3000;
 
 // --- Database Connection ---
 connectDB();
@@ -33,50 +44,44 @@ const validateGuestbookEntry = [
     .escape(),
 ];
 
-
 // --- Routes ---
 
-// GET / - Display the guestbook entries
+// GET / - Display guestbook entries
 app.get('/', async (req, res) => {
-    try {
-        // *** REPLACE THIS WITH DATABASE QUERY ***
-        const result = await query('SELECT * FROM guestbook_entries ORDER BY timestamp DESC');
-        const entries = result.rows;
-         res.render('index', { entries, errors: [] }); // Pass entries and an empty error array initially
-
-    } catch (error) {
-        console.error('Error fetching entries:', error);
-        res.status(500).send('Error fetching entries');
-    }
+  try {
+    const result = await query('SELECT * FROM guestbook_entries ORDER BY timestamp DESC');
+    const entries = result.rows;
+    res.render('index', { entries, errors: [] });
+  } catch (error) {
+    console.error('Error fetching entries:', error);
+    res.status(500).send('Error fetching entries');
+  }
 });
 
 // POST /add - Add a new guestbook entry
 app.post('/add', validateGuestbookEntry, async (req, res) => {
-    try {
-         const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-        // Validation failed, re-render the form with errors
-        const result = await query('SELECT * FROM guestbook_entries ORDER BY timestamp DESC');
-        const entries = result.rows;
-        return res.render('index', { entries, errors: errors.array() }); // Pass errors to the template
-        }
-        const { name, message } = req.body;
-
-        // *** REPLACE THIS WITH DATABASE INSERT ***
-        await query(
-          'INSERT INTO guestbook_entries (name, message) VALUES ($1, $2)',
-          [name, message]
-        );
-
-        res.redirect('/');
-    } catch (error) {
-        console.error('Error adding entry:', error);
-        res.status(500).send('Error adding entry');
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const result = await query('SELECT * FROM guestbook_entries ORDER BY timestamp DESC');
+      const entries = result.rows;
+      return res.render('index', { entries, errors: errors.array() });
     }
+
+    const { name, message } = req.body;
+    await query(
+      'INSERT INTO guestbook_entries (name, message) VALUES ($1, $2)',
+      [name, message]
+    );
+
+    res.redirect('/');
+  } catch (error) {
+    console.error('Error adding entry:', error);
+    res.status(500).send('Error adding entry');
+  }
 });
 
-// --- Start the Server ---
-
+// --- Start Server ---
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
