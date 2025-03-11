@@ -5,17 +5,17 @@ require('dotenv').config();
 let pool;
 
 if (process.env.NODE_ENV === 'production') {
-    // Production (Render): Use DATABASE_URL and enable keepAlive
+    // On Render (production)
     console.log("=== Production Environment ===");
-    console.log("DATABASE_URL:", process.env.DATABASE_URL); // Log for verification
+    console.log("DATABASE_URL:", process.env.DATABASE_URL); // Log for debugging
 
     try {
         pool = new Pool({
             connectionString: process.env.DATABASE_URL,
             ssl: {
-                rejectUnauthorized: false // REQUIRED for Render's free PostgreSQL (NOT for production security)
+                rejectUnauthorized: false // REQUIRED for Render's free PostgreSQL
             },
-            keepAlive: true, // IMPORTANT: Enable keepalive
+            keepAlive: true, // ADD THIS LINE - Enable keepalive
         });
         console.log("Pool created successfully (production).");
 
@@ -23,7 +23,7 @@ if (process.env.NODE_ENV === 'production') {
         pool.connect()
             .then(client => {
                 console.log('Successfully connected to PostgreSQL (initial test)');
-                client.release(); // Release immediately
+                client.release(); // Release immediately after testing
             })
             .catch(err => {
                 console.error('IMMEDIATE CONNECTION TEST FAILED (production):', err);
@@ -32,16 +32,16 @@ if (process.env.NODE_ENV === 'production') {
 
     } catch (error) {
         console.error("Error creating Pool (production):", error);
-        process.exit(1);
+        process.exit(1); // Exit if pool creation fails
     }
 
 } else {
-    // Local development: Use .env variables and enable keepAlive
+    // Local development
     console.log("=== Development Environment ===");
     console.log("DB_USER:", process.env.DB_USER);
     console.log("DB_HOST:", process.env.DB_HOST);
     console.log("DB_NAME:", process.env.DB_NAME);
-    console.log("DB_PASSWORD:", process.env.DB_PASSWORD ? "********" : "NOT SET"); // Mask password
+    console.log("DB_PASSWORD:", process.env.DB_PASSWORD ? "********" : "NOT SET"); // NEVER log the actual password!
     console.log("DB_PORT:", process.env.DB_PORT);
 
     try {
@@ -51,7 +51,7 @@ if (process.env.NODE_ENV === 'production') {
             database: process.env.DB_NAME,
             password: process.env.DB_PASSWORD,
             port: parseInt(process.env.DB_PORT) || 5432,
-            keepAlive: true, // Enable keepalive for local development too
+            keepAlive: true, // ADD THIS - Enable for local development too
         });
         console.log("Pool created successfully (development).");
     } catch (error) {
@@ -60,42 +60,27 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
-/**
- * Connects to the PostgreSQL database and logs the connected database name.
- * @async
- * @function connectDB
- */
 const connectDB = async () => {
     let client;
     try {
         client = await pool.connect();
-        console.log('Connected to PostgreSQL database:', pool.options.database); // Log connected database
-        client.release(); // Always release the client
+      console.log('Connected to PostgreSQL database:',  pool.options.database);
+        client.release();
     } catch (error) {
         console.error('Error connecting to PostgreSQL database:', error.message);
-        process.exit(1); // Exit on fatal error
+        process.exit(1);
     }
 };
-
-/**
- * Executes a SQL query against the PostgreSQL database.
- * @async
- * @function query
- * @param {string} text - The SQL query string (use parameterized queries).
- * @param {any[]} [params] - Optional parameters for the query.
- * @returns {Promise<pg.QueryResult>} The query result.
- * @throws {Error} If the query fails.
- */
 const query = async (text, params) => {
     const start = Date.now();
     try {
         const res = await pool.query(text, params);
         const duration = Date.now() - start;
-        console.log('Executed query:', { text, duration, rows: res.rowCount }); // Log query details
+        console.log('Executed query:', { text, duration, rows: res.rowCount });
         return res;
     } catch (error) {
-        console.error('Error executing query:', error); // Log the full error object
-        throw error; // Re-throw to be handled by the calling function
+        console.error('Error executing query:', error); // Log full error
+        throw error; // Re-throw
     }
 };
 
@@ -104,7 +89,7 @@ module.exports = {
     query,
 };
 
-// Graceful shutdown on process exit/interrupt/termination
+// Graceful shutdown
 process.on('exit', () => {
     pool.end()
         .then(() => console.log('Database connection pool closed'))
