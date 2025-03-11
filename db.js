@@ -6,25 +6,38 @@ let pool;
 
 if (process.env.NODE_ENV === 'production') {
   // On Render (production)
-  console.log("=== Production Environment ==="); // Log environment
-  console.log("DATABASE_URL:", process.env.DATABASE_URL); // Log the DATABASE_URL
+  console.log("=== Production Environment ===");
+  console.log("DATABASE_URL:", process.env.DATABASE_URL);
 
-  try { // Add a try-catch block *around* the Pool creation
+  try {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: {
-        rejectUnauthorized: false // REQUIRED for Render's free PostgreSQL, but NOT for production!
+        rejectUnauthorized: false
       }
     });
-    console.log("Pool created successfully (production)."); // Log successful pool creation
+    console.log("Pool created successfully (production).");
+
+    // TEST CONNECTION IMMEDIATELY (Crucial Addition)
+    pool.connect()
+      .then(client => {
+        console.log('Successfully connected to PostgreSQL (initial test)');
+        client.release(); // Release immediately after testing
+      })
+      .catch(err => {
+        console.error('IMMEDIATE CONNECTION TEST FAILED (production):', err); // Log the FULL error object
+        process.exit(1);
+      });
+
+
   } catch (error) {
-    console.error("Error creating Pool (production):", error); // Log any errors during Pool creation
-    process.exit(1); // Exit if Pool creation fails
+    console.error("Error creating Pool (production):", error);
+    process.exit(1);
   }
 
 } else {
-  // Local development
-  console.log("=== Development Environment ==="); // Log environment
+  // Local development (Keep as is - you're not having local issues)
+    console.log("=== Development Environment ==="); // Log environment
   console.log("DB_USER:", process.env.DB_USER);
   console.log("DB_HOST:", process.env.DB_HOST);
   console.log("DB_NAME:", process.env.DB_NAME);
@@ -46,6 +59,7 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
+// Keep the rest of db.js the same (connectDB, query, process.on('exit'))
 const connectDB = async () => {
   let client; // Declare client outside the try block
   try {
