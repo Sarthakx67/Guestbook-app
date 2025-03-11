@@ -2,13 +2,34 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = new Pool({
-user: process.env.DB_USER,
-host: process.env.DB_HOST,
-database: process.env.DB_NAME,
-password: process.env.DB_PASSWORD,
-port: parseInt(process.env.DB_PORT) || 5432,
-});
+let pool;
+
+if (process.env.NODE_ENV === 'production') {
+  // On Render (production) - USE DATABASE_URL
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false // REQUIRED for Render's free PostgreSQL
+    }
+  });
+} else {
+  // Local development - use .env variables
+  pool = new Pool({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT) || 5432,
+  });
+}
+
+// const pool = new Pool({
+// user: process.env.DB_USER,
+// host: process.env.DB_HOST,
+// database: process.env.DB_NAME,
+// password: process.env.DB_PASSWORD,
+// port: parseInt(process.env.DB_PORT) || 5432,
+// });
 
 const connectDB = async () => {
 try {
