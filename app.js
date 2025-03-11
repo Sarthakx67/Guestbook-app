@@ -1,4 +1,4 @@
-// app.js
+// app.js (with added logging)
 const express = require('express');
 const path = require('path');
 const { connectDB, query } = require('./db');
@@ -49,11 +49,14 @@ const validateGuestbookEntry = [
 // GET / - Display guestbook entries
 app.get('/', async (req, res) => {
   try {
+    console.log("app.get('/') - Entering route handler"); // ADD THIS
     const result = await query('SELECT * FROM guestbook_entries ORDER BY timestamp DESC');
+    console.log("app.get('/') - Query executed, result:", result); // ADD THIS
     const entries = result.rows;
+    console.log("app.get('/') - Rendering template with entries:", entries); // ADD THIS
     res.render('index', { entries, errors: [] });
   } catch (error) {
-    console.error('Error fetching entries:', error);
+    console.error('Error fetching entries:', error); // KEEP THIS
     res.status(500).send('Error fetching entries');
   }
 });
