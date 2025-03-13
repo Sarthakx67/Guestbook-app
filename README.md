@@ -1,6 +1,6 @@
 # Guestbook-app
 
-An app to store guests' messages.
+An app to store guests messages.
 
 ## Features
 - Store guest messages
